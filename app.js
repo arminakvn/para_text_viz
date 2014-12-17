@@ -186,38 +186,38 @@
         options: {
           position: "topleft"
         },
-        onAdd: function(map) {
-          var disable3D;
-          this._m = map;
-          this._textDomEl = L.DomUtil.create('div', 'container paratext-info');
-          L.DomUtil.enableTextSelection(this._textDomEl);
-          this._m.getPanes().overlayPane.appendChild(this._textDomEl);
-          this._textDomObj = $(L.DomUtil.get(this._textDomEl));
-          this._textDomObj.css('width', $(this._m.getContainer())[0].clientWidth / 3);
-          this._textDomObj.css('height', $(this._m.getContainer())[0].clientHeight - 20);
-          this._textDomObj.css('background-color', 'white');
-          L.DomUtil.setOpacity(L.DomUtil.get(this._textDomEl), 0.7);
-          console.log($(this._m.getContainer()));
-          if (this._viewSet === void 0) {
-            this._viewSet = this._m.getCenter();
-          }
-          console.log(this._viewSet);
-          L.DomUtil.setPosition(L.DomUtil.get(this._textDomEl), L.point(40, 0), disable3D = 0);
-          return this._textDomEl;
-        }
+        onAdd: (function(_this) {
+          return function(map) {
+            var disable3D;
+            _this._m = map;
+            _this._textDomEl = L.DomUtil.create('div', 'container paratext-info');
+            L.DomUtil.enableTextSelection(_this._textDomEl);
+            _this._m.getPanes().overlayPane.appendChild(_this._textDomEl);
+            console.log("@_textDomEl.innerHTML", _this._textDomEl.innerHTML);
+            _this._textDomObj = $(L.DomUtil.get(_this._textDomEl));
+            _this._textDomObj.css('width', $(_this._m.getContainer())[0].clientWidth / 3);
+            _this._textDomObj.css('height', $(_this._m.getContainer())[0].clientHeight - 80);
+            _this._textDomObj.css('background-color', 'white');
+            _this._textDomObj.css('overflow', 'scroll');
+            L.DomUtil.setOpacity(L.DomUtil.get(_this._textDomEl), 0.8);
+            console.log($(_this._m.getContainer()));
+            if (_this._viewSet === void 0) {
+              _this._viewSet = _this._m.getCenter();
+            }
+            console.log(_this._viewSet);
+            L.DomUtil.setPosition(L.DomUtil.get(_this._textDomEl), L.point(40, 0), disable3D = 0);
+            _this._d3text = d3.select(".paratext-info").append("ul").style("list-style-type", "disk").attr("width", $(_this._m.getContainer())[0].clientWidth / 3).attr("height", $(_this._m.getContainer())[0].clientHeight - 80).selectAll("li").data(_this.text).enter().append("li").style("font-family", "Helvetica").style("line-height", "2").text(function(d, i) {
+              return d.description;
+            }).style("font-size", "16px").style("fill", "gray").on("mouseover", function() {
+              d3.select(this).transition().duration(100).style("fill", "black").style("opacity", 0.9);
+            }).on("mouseout", function() {
+              d3.select(this).transition().duration(100).style("fill", "gray").style("opacity", 1);
+            }).transition().duration(1).delay(1).style("opacity", 1);
+            return _this._textDomEl;
+          };
+        })(this)
       });
       this._m.addControl(new textControl());
-      this._d3text = d3.select(".paratext-info").append("svg").attr("width", $(this._m.getContainer())[0].clientWidth / 3).attr("height", $(this._m.getContainer())[0].clientHeight - 20).append("g").selectAll("text").data(this.text).enter().append("text").attr("width", $(this._m.getContainer())[0].clientWidth / 3).attr("height", $(this._m.getContainer())[0].clientHeight - 20).style("font-family", "Helvetica").attr("fill", "black").text(function(d, i) {
-        return d.description;
-      }).on("mouseover", function() {
-        d3.select(this).transition().duration(1).style("fill", "gray");
-      }).on("mouseout", function() {
-        d3.select(this).transition().duration(1).style("fill", "black");
-      }).transition().delay(0).duration(1).each("start", function(d, i) {
-        d3.select(this).attr("y", function() {
-          return i * 30;
-        });
-      }).transition().duration(1).delay(1).style("opacity", 1);
       return this._m;
     },
     connectRelation: function() {
@@ -242,7 +242,8 @@
     };
   };
 
-  queue().defer(d3.csv, "ccn_18062014_sample.csv").await(function(err, texts) {
+  queue().defer(d3.csv, "ccn_18062014_data.csv").await(function(err, texts) {
+    console.log("texts", texts);
     draw(texts);
   });
 
@@ -250,7 +251,7 @@
     var $texts, paratext, textmap, texts;
     paratext = L.paratext(data);
     textmap = paratext.makeMap();
-    texts = d3.selectAll("text");
+    texts = d3.selectAll("li");
     $texts = $(texts[0]);
     $texts.each(function() {
       $(this).data("datum", $(this).prop("__data__"));
