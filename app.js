@@ -196,7 +196,7 @@
             console.log("@_textDomEl.innerHTML", _this._textDomEl.innerHTML);
             _this._textDomObj = $(L.DomUtil.get(_this._textDomEl));
             _this._textDomObj.css('width', $(_this._m.getContainer())[0].clientWidth / 3);
-            _this._textDomObj.css('height', $(_this._m.getContainer())[0].clientHeight - 80);
+            _this._textDomObj.css('height', $(_this._m.getContainer())[0].clientHeight);
             _this._textDomObj.css('background-color', 'white');
             _this._textDomObj.css('overflow', 'scroll');
             L.DomUtil.setOpacity(L.DomUtil.get(_this._textDomEl), 0.8);
@@ -205,13 +205,13 @@
               _this._viewSet = _this._m.getCenter();
             }
             console.log(_this._viewSet);
-            L.DomUtil.setPosition(L.DomUtil.get(_this._textDomEl), L.point(40, 0), disable3D = 0);
-            _this._d3text = d3.select(".paratext-info").append("ul").style("list-style-type", "disk").attr("width", $(_this._m.getContainer())[0].clientWidth / 3).attr("height", $(_this._m.getContainer())[0].clientHeight - 80).selectAll("li").data(_this.text).enter().append("li").style("font-family", "Helvetica").style("line-height", "2").text(function(d, i) {
+            L.DomUtil.setPosition(L.DomUtil.get(_this._textDomEl), L.point(40, -65), disable3D = 0);
+            _this._d3text = d3.select(".paratext-info").append("ul").style("list-style-type", "none").style("padding-left", "0px").attr("width", $(_this._m.getContainer())[0].clientWidth / 3).attr("height", $(_this._m.getContainer())[0].clientHeight - 80).selectAll("li").data(_this.text).enter().append("li").style("font-family", "Helvetica").style("line-height", "2").style("margin-top", "10px").style("padding-right", "20px").style("padding-left", "40px").text(function(d, i) {
               return d.description;
-            }).style("font-size", "16px").style("fill", "gray").on("mouseover", function() {
-              d3.select(this).transition().duration(100).style("fill", "black").style("opacity", 0.9);
+            }).style("font-size", "16px").style("color", "rgb(72,72,72)").on("mouseover", function() {
+              d3.select(this).transition().duration(0).style("color", "black").style("background-color", "rgb(208,208,208) ").style("opacity", 1);
             }).on("mouseout", function() {
-              d3.select(this).transition().duration(100).style("fill", "gray").style("opacity", 1);
+              d3.select(this).transition().duration(1000).style("color", "rgb(72,72,72)").style("background-color", "white").style("opacity", 1);
             }).transition().duration(1).delay(1).style("opacity", 1);
             return _this._textDomEl;
           };
@@ -248,7 +248,7 @@
   });
 
   draw = function(data) {
-    var $texts, paratext, textmap, texts;
+    var $texts, paratext, textmap, texts, timeout;
     paratext = L.paratext(data);
     textmap = paratext.makeMap();
     texts = d3.selectAll("li");
@@ -256,10 +256,22 @@
     $texts.each(function() {
       $(this).data("datum", $(this).prop("__data__"));
     });
-    $texts.on("mouseover", function() {
+    timeout = void 0;
+    console.log("$texts", $texts);
+    $texts.hover((function() {
+      $(this).css('cursor', 'pointer');
+      timeout = setTimeout((function(_this) {
+        return function() {
+          return paratext._m.setView(new L.LatLng(_this.__data__.lat, _this.__data__.long), 19);
+        };
+      })(this), 500);
+    }), function() {
+      clearTimeout(timeout);
+    });
+    $texts.on("mouseout", function() {
       console.log("click");
       console.log("$text", this);
-      return paratext._m.setView(new L.LatLng(this.__data__.lat, this.__data__.long), 16);
+      return $(this).css('cursor', 'default');
     });
   };
 
