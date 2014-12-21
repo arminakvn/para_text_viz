@@ -179,8 +179,15 @@
       var map, textControl;
       map = $("body").append("<div id='map'></div>");
       L.mapbox.accessToken = "pk.eyJ1IjoiYXJtaW5hdm4iLCJhIjoiSTFteE9EOCJ9.iDzgmNaITa0-q-H_jw1lJw";
-      this._m = L.mapbox.map("map", "arminavn.ib1f592g").setView([40, -74.50], 9);
-      this._m.dragging.disable();
+      this._m = L.mapbox.map("map", "arminavn.ib1f592g", {
+        zoomAnimation: true,
+        zoomAnimationThreshold: 4,
+        inertiaDeceleration: 4000,
+        animate: true,
+        duration: 1.75,
+        easeLinearity: 0.1
+      }).setView([42.3, -71.5], 9);
+      this._m.boxZoom.enable();
       this._m.scrollWheelZoom.disable();
       textControl = L.Control.extend({
         options: {
@@ -193,27 +200,54 @@
             _this._textDomEl = L.DomUtil.create('div', 'container paratext-info');
             L.DomUtil.enableTextSelection(_this._textDomEl);
             _this._m.getPanes().overlayPane.appendChild(_this._textDomEl);
-            console.log("@_textDomEl.innerHTML", _this._textDomEl.innerHTML);
             _this._textDomObj = $(L.DomUtil.get(_this._textDomEl));
             _this._textDomObj.css('width', $(_this._m.getContainer())[0].clientWidth / 3);
             _this._textDomObj.css('height', $(_this._m.getContainer())[0].clientHeight);
             _this._textDomObj.css('background-color', 'white');
             _this._textDomObj.css('overflow', 'scroll');
             L.DomUtil.setOpacity(L.DomUtil.get(_this._textDomEl), 0.8);
-            console.log($(_this._m.getContainer()));
             if (_this._viewSet === void 0) {
               _this._viewSet = _this._m.getCenter();
             }
-            console.log(_this._viewSet);
             L.DomUtil.setPosition(L.DomUtil.get(_this._textDomEl), L.point(40, -65), disable3D = 0);
-            _this._d3text = d3.select(".paratext-info").append("ul").style("list-style-type", "none").style("padding-left", "0px").attr("width", $(_this._m.getContainer())[0].clientWidth / 3).attr("height", $(_this._m.getContainer())[0].clientHeight - 80).selectAll("li").data(_this.text).enter().append("li").style("font-family", "Helvetica").style("line-height", "2").style("margin-top", "10px").style("padding-right", "20px").style("padding-left", "40px").text(function(d, i) {
+            _this._d3text = d3.select(".paratext-info").append("ul").style("list-style-type", "none").style("padding-left", "0px").attr("width", $(_this._m.getContainer())[0].clientWidth / 3).attr("height", $(_this._m.getContainer())[0].clientHeight - 80);
+            _this._d3li = _this._d3text.selectAll("li").data(_this.text).enter().append("li");
+            _this._d3li.style("font-family", "Helvetica").style("line-height", "2").style("margin-top", "10px").style("padding-right", "20px").style("padding-left", "40px").attr("id", function(d, i) {
+              return "line-" + i;
+            }).text(function(d, i) {
+              var timeout;
+              _this._leafletli = L.DomUtil.get("line-" + i);
+              timeout = void 0;
+              L.DomEvent.addListener(_this._leafletli, 'mouseover', function(e) {
+                $(this).css('cursor', 'pointer');
+                timeout = setTimeout(function() {
+                  return _this._m.setView(new L.LatLng(d.lat, d.long), 18, {
+                    animation: true
+                  });
+                }, 500);
+              }, function() {
+                timeout = setTimeout(function() {
+                  return _this._m.setView(new L.LatLng(d.lat, d.long), 19, {
+                    animation: true
+                  });
+                }, 1000);
+              }, function() {
+                clearTimeout(timeout);
+              });
               return d.description;
-            }).style("font-size", "16px").style("color", "rgb(72,72,72)").on("mouseover", function() {
+            }).style("font-size", "16px").style("color", "rgb(72,72,72)").on("mouseover", function(d, i) {
+              $(this).css('cursor', 'pointer');
               d3.select(this).transition().duration(0).style("color", "black").style("background-color", "rgb(208,208,208) ").style("opacity", 1);
-            }).on("mouseout", function() {
+            }).on("mouseout", function(d, i) {
               d3.select(this).transition().duration(1000).style("color", "rgb(72,72,72)").style("background-color", "white").style("opacity", 1);
             }).transition().duration(1).delay(1).style("opacity", 1);
+            _this._m.whenReady(function() {});
             return _this._textDomEl;
+          };
+        })(this),
+        onSetView: (function(_this) {
+          return function(map) {
+            return _this._m = map;
           };
         })(this)
       });
@@ -243,7 +277,6 @@
   };
 
   queue().defer(d3.csv, "ccn_18062014_data.csv").await(function(err, texts) {
-    console.log("texts", texts);
     draw(texts);
   });
 
@@ -256,23 +289,7 @@
     $texts.each(function() {
       $(this).data("datum", $(this).prop("__data__"));
     });
-    timeout = void 0;
-    console.log("$texts", $texts);
-    $texts.hover((function() {
-      $(this).css('cursor', 'pointer');
-      timeout = setTimeout((function(_this) {
-        return function() {
-          return paratext._m.setView(new L.LatLng(_this.__data__.lat, _this.__data__.long), 19);
-        };
-      })(this), 500);
-    }), function() {
-      clearTimeout(timeout);
-    });
-    $texts.on("mouseout", function() {
-      console.log("click");
-      console.log("$text", this);
-      return $(this).css('cursor', 'default');
-    });
+    return timeout = void 0;
   };
 
 }).call(this);
