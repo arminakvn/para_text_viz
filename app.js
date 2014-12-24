@@ -3,138 +3,6 @@
   var addChainedAttributeAccessor, draw,
     __slice = [].slice;
 
-  L.D3 = L.Class.extend({
-    includes: L.Mixin.Events,
-    options: {
-      type: "json",
-      topojson: false,
-      pathClass: "path"
-    },
-    initialize: function(data, options) {
-      var _this;
-      _this = this;
-      L.setOptions(_this, options);
-      _this._loaded = false;
-      if (typeof data === "string") {
-        d3[_this.options.type](data, function(err, json) {
-          if (err) {
-            return;
-          } else {
-            if (_this.options.topojson) {
-              _this.data = topojson.object(json, json.objects[_this.options.topojson]);
-            } else if (L.Util.isArray(json)) {
-              _this.data = {
-                type: "FeatureCollection",
-                features: json
-              };
-            } else {
-              _this.data = json;
-            }
-            _this._loaded = true;
-            _this.fire("dataLoaded");
-          }
-        });
-      } else {
-        if (_this.options.topojson) {
-          _this.data = topojson.object(data, data.objects[_this.options.topojson]);
-        } else if (L.Util.isArray(data)) {
-          _this.data = {
-            type: "FeatureCollection",
-            features: data
-          };
-        } else {
-          _this.data = data;
-        }
-        _this._loaded = true;
-        _this.fire("dataLoaded");
-      }
-    },
-    onAdd: function(map) {
-      this._map = map;
-      this._project = function(x) {
-        var point;
-        point = map.latLngToLayerPoint(new L.LatLng(x[1], x[0]));
-        return [point.x, point.y];
-      };
-      this._el = d3.select(this._map.getPanes().overlayPane).append("svg");
-      this._g = this._el.append("g").attr("class", (this.options.svgClass ? this.options.svgClass + " leaflet-zoom-hide" : "leaflet-zoom-hide"));
-      if (this._loaded) {
-        this.onLoaded();
-      } else {
-        this.on("dataLoaded", this.onLoaded, this);
-      }
-      this._popup = L.popup();
-      this.fire("added");
-    },
-    addTo: function(map) {
-      map.addLayer(this);
-      return this;
-    },
-    onLoaded: function() {
-      this.bounds = d3.geo.bounds(this.data);
-      this.path = d3.geo.path().projection(this._project);
-      if (this.options.before) {
-        this.options.before.call(this, this.data);
-      }
-      this._feature = this._g.selectAll("path").data((this.options.topojson ? this.data.geometries : this.data.features)).enter().append("path").attr("class", this.options.pathClass);
-      this._map.on("viewreset", this._reset, this);
-      this._reset();
-    },
-    onRemove: function(map) {
-      this._el.remove();
-      map.off("viewreset", this._reset, this);
-    },
-    _reset: function() {
-      var bottomLeft, topRight;
-      bottomLeft = this._project(this.bounds[0]);
-      topRight = this._project(this.bounds[1]);
-      this._el.attr("width", topRight[0] - bottomLeft[0]).attr("height", bottomLeft[1] - topRight[1]).style("margin-left", bottomLeft[0] + "px").style("margin-top", topRight[1] + "px");
-      this._g.attr("transform", "translate(" + -bottomLeft[0] + "," + -topRight[1] + ")");
-      this._feature.attr("d", this.path);
-    },
-    bindPopup: function(content) {
-      this._popup = L.popup();
-      this._popupContent = content;
-      if (this._map) {
-        this._bindPopup();
-      }
-      this.on("added", (function() {
-        this._bindPopup();
-      }), this);
-    },
-    _bindPopup: function() {
-      var _this;
-      _this = this;
-      _this._g.on("click", (function() {
-        var props;
-        props = d3.select(d3.event.target).datum().properties;
-        if (typeof _this._popupContent === "string") {
-          _this.fire("pathClicked", {
-            cont: _this._popupContent
-          });
-        } else if (typeof _this._popupContent === "function") {
-          _this.fire("pathClicked", {
-            cont: _this._popupContent(props)
-          });
-        }
-      }), true);
-      _this.on("pathClicked", function(e) {
-        _this._popup.setContent(e.cont);
-        _this._openable = true;
-      });
-      _this._map.on("click", function(e) {
-        if (_this._openable) {
-          _this._openable = false;
-          _this._popup.setLatLng(e.latlng).openOn(_this._map);
-        }
-      });
-    }
-  });
-
-  L.d3 = function(data, options) {
-    return new L.D3(data, options);
-  };
-
   L.ParaText = L.Class.extend({
     initialize: function(text) {
       this.text = text;
@@ -175,6 +43,30 @@
       this._count = this._count + 1;
       return this._svg;
     },
+    removeAnyLocation: function() {
+      return d3.select(this._m.getPanes().overlayPane).select(".leaflet-zoom-animated").selectAll("g").data([]).exit().remove();
+    },
+    setViewByLocation: function(d) {
+      return this._m.setView(new L.LatLng(d.lat, d.long), 19, {
+        animation: true,
+        duration: 50
+      });
+    },
+    showLocation: function(d) {
+      var featureData;
+      featureData = [];
+      featureData.push(new L.LatLng(d.lat, d.long));
+      this._g = d3.select(this._m.getPanes().overlayPane).select(".leaflet-zoom-animated").selectAll("g");
+      return this._g.data(featureData).enter().append("g").append("circle").attr("r", 0).attr("stroke", "white").attr("fill", "none").attr("stroke-width", "10").attr("cx", (function(_this) {
+        return function(d) {
+          return _this._m.latLngToLayerPoint(d).x;
+        };
+      })(this)).attr("cy", (function(_this) {
+        return function(d) {
+          return _this._m.latLngToLayerPoint(d).y;
+        };
+      })(this)).transition().delay(120).duration(1000).attr("r", 80).attr("stroke", "gray").attr("stroke-width", "0").attr("fill", "none");
+    },
     makeMap: function() {
       var map, textControl;
       map = $("body").append("<div id='map'></div>");
@@ -186,7 +78,7 @@
         animate: true,
         duration: 1.75,
         easeLinearity: 0.1
-      }).setView([42.3, -71.5], 9);
+      }).setView([42.34, -71.12], 13);
       this._m.boxZoom.enable();
       this._m.scrollWheelZoom.disable();
       textControl = L.Control.extend({
@@ -198,6 +90,8 @@
             var disable3D;
             _this._m = map;
             _this._textDomEl = L.DomUtil.create('div', 'container paratext-info');
+            _this._el = L.DomUtil.create('svg', 'svg');
+            _this._m.getPanes().overlayPane.appendChild(_this._el);
             L.DomUtil.enableTextSelection(_this._textDomEl);
             _this._m.getPanes().overlayPane.appendChild(_this._textDomEl);
             _this._textDomObj = $(L.DomUtil.get(_this._textDomEl));
@@ -218,22 +112,28 @@
               var timeout;
               _this._leafletli = L.DomUtil.get("line-" + i);
               timeout = void 0;
+              L.DomEvent.addListener(_this._leafletli, 'click', function(e) {
+                e.stopPropagation();
+                _this.removeAnyLocation();
+                _this.setViewByLocation(d);
+                return _this.showLocation(d);
+              });
+              L.DomEvent.addListener(_this._leafletli, 'mouseout', function(e) {
+                timeout = 0;
+                return e.stopPropagation();
+              });
               L.DomEvent.addListener(_this._leafletli, 'mouseover', function(e) {
                 $(this).css('cursor', 'pointer');
+                e.stopPropagation();
                 timeout = setTimeout(function() {
-                  return _this._m.setView(new L.LatLng(d.lat, d.long), 18, {
-                    animation: true
-                  });
-                }, 500);
-              }, function() {
-                timeout = setTimeout(function() {
-                  return _this._m.setView(new L.LatLng(d.lat, d.long), 19, {
-                    animation: true
-                  });
-                }, 1000);
-              }, function() {
-                clearTimeout(timeout);
-              });
+                  _this._m._initPathRoot();
+                  if (timeout !== 0) {
+                    _this.removeAnyLocation();
+                    _this.showLocation(d);
+                    return timeout = 0;
+                  }
+                }, 200);
+              }, function() {});
               return d.description;
             }).style("font-size", "16px").style("color", "rgb(72,72,72)").on("mouseover", function(d, i) {
               $(this).css('cursor', 'pointer');
@@ -281,15 +181,14 @@
   });
 
   draw = function(data) {
-    var $texts, paratext, textmap, texts, timeout;
+    var $texts, paratext, textmap, texts;
     paratext = L.paratext(data);
     textmap = paratext.makeMap();
     texts = d3.selectAll("li");
     $texts = $(texts[0]);
-    $texts.each(function() {
+    return $texts.each(function() {
       $(this).data("datum", $(this).prop("__data__"));
     });
-    return timeout = void 0;
   };
 
 }).call(this);
