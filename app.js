@@ -149,48 +149,49 @@
             this._m.removeLayer(this._m._layers[i]);
           } catch (_error) {
             e = _error;
-            console.log("problem with " + e + this._m._layers[i]);
+            continue;
           }
         }
       }
     },
     vizAllLocations: function() {
-      return this._m.on("moveend viewreset zoomend", (function(_this) {
+      return this._m.on("load moveend viewreset zoomend", (function(_this) {
         return function() {
           var each, _d3_obj, _i, _len, _ref, _results;
-          _this.clearMap();
+          if (_this._polyline) {
+            _this.clearMap();
+          }
           _d3_obj = d3.selectAll(_this._d3li);
           _ref = _d3_obj[0][0];
           _results = [];
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
             each = _ref[_i];
-            if ((L.DomUtil.getViewportOffset(document.getElementById(d3.select(each).property('id'))).y < $(_this._m.getContainer())[0].clientHeight) && (_this._m.latLngToContainerPoint(L.latLng(each.__data__.lat, each.__data__.long)).y < $(_this._m.getContainer())[0].clientHeight) && (_this._m.latLngToContainerPoint(L.latLng(each.__data__.lat, each.__data__.long)).y > 0)) {
-              _results.push(_this.vizLocation(each.__data__, d3.select(each).property('id').replace('line-', '')));
-            } else {
-              _results.push(void 0);
-            }
+            _results.push(_this.vizLocation(each.__data__, d3.select(each).property('id').replace('line-', '')));
           }
           return _results;
         };
       })(this));
     },
     vizLocation: function(d, i) {
-      return this._m.on("moveend viewreset zoomend", (function(_this) {
+      return this._m.on("load moveend viewreset zoomend", (function(_this) {
         return function() {
           var points, _polyline;
           if (_this._polyline) {
-            _polyline = _this._polyline.setLatLngs([]);
+            _polyline = _this._polyline;
           }
-          _polyline = L.polyline([], {
-            color: 'white',
+          points = [];
+          if (_this._m.getBounds().contains(_this._m.layerPointToLatLng(_this._m.latLngToLayerPoint(L.latLng(d.lat, d.long)))) && (_this._m.getBounds().contains(_this._m.layerPointToLatLng(_this._m.containerPointToLayerPoint([L.DomUtil.getViewportOffset(document.getElementById("line-" + i)).x + 20 + $(_this._m.getContainer())[0].clientWidth / 3, L.DomUtil.getViewportOffset(document.getElementById("line-" + i)).y]))))) {
+            points.push(_this._m.layerPointToLatLng(_this._m.latLngToLayerPoint(L.latLng(d.lat, d.long))));
+            points.push(_this._m.layerPointToLatLng(_this._m.containerPointToLayerPoint([L.DomUtil.getViewportOffset(document.getElementById("line-" + i)).x + 30 + $(_this._m.getContainer())[0].clientWidth / 3, L.DomUtil.getViewportOffset(document.getElementById("line-" + i)).y])));
+          }
+          _polyline = L.polyline(points, {
+            color: 'blue',
             opacity: 0.8
           });
-          points = [];
-          points.push(_this._m.layerPointToLatLng(_this._m.latLngToLayerPoint(L.latLng(d.lat, d.long))));
-          points.push(_this._m.layerPointToLatLng(_this._m.containerPointToLayerPoint([L.DomUtil.getViewportOffset(document.getElementById("line-" + i)).x + 20 + $(_this._m.getContainer())[0].clientWidth / 3, L.DomUtil.getViewportOffset(document.getElementById("line-" + i)).y])));
-          _polyline.setLatLngs(points);
           _polyline.on('add', function() {
             var timeout;
+            _polyline.bringToFront();
+            console.log("_polyline", _polyline._container);
             timeout = 0;
             return setTimeout((function() {
               $(L.DomUtil.get(_this._polyline._container)).animate({
@@ -199,8 +200,7 @@
             }));
           });
           _this._polyline = _polyline;
-          L.Util.limitExecByInterval(console.log("inside the thingy"), 3000);
-          return _this._polyline.addTo(_this._m);
+          return _polyline.addTo(_this._m);
         };
       })(this));
     },
@@ -258,7 +258,8 @@
         animate: true,
         duration: 1.75,
         easeLinearity: 0.1
-      }).setView([42.34, -71.12], 13);
+      });
+      this._m.setView([42.34, -71.12], 13);
       this._m.boxZoom.enable();
       this._m.scrollWheelZoom.disable();
       textControl = L.Control.extend({
@@ -279,23 +280,21 @@
             _this._textDomObj.css('height', $(_this._m.getContainer())[0].clientHeight);
             _this._textDomObj.css('background-color', 'white');
             _this._textDomObj.css('overflow', 'scroll');
-            L.DomUtil.setOpacity(L.DomUtil.get(_this._textDomEl), 0.8);
+            L.DomUtil.setOpacity(L.DomUtil.get(_this._textDomEl), .8);
             if (_this._viewSet === void 0) {
               _this._viewSet = _this._m.getCenter();
             }
             L.DomUtil.setPosition(L.DomUtil.get(_this._textDomEl), L.point(40, -65), disable3D = 0);
             _this._d3text = d3.select(".paratext-info").append("ul").style("list-style-type", "none").style("padding-left", "0px").attr("width", $(_this._m.getContainer())[0].clientWidth / 3).attr("height", $(_this._m.getContainer())[0].clientHeight - 80);
             _this._d3li = _this._d3text.selectAll("li").data(_this.text).enter().append("li");
-            _this._d3li.style("font-family", "Helvetica").style("line-height", "2").style("margin-top", "10px").style("padding-right", "20px").style("padding-left", "40px").attr("id", function(d, i) {
+            _this._d3li.style("font-family", "Helvetica").style("line-height", "2").style("border", "2px solid gray").style("margin-top", "10px").style("padding-right", "20px").style("padding-left", "40px").attr("id", function(d, i) {
               return "line-" + i;
             }).text(function(d, i) {
               var timeout;
               _this._leafletli = L.DomUtil.get("line-" + i);
-              console.log(L.DomUtil.getViewportOffset(_this._leafletli));
               timeout = void 0;
               L.DomEvent.addListener(_this._leafletli, 'click', function(e) {
                 e.stopPropagation();
-                _this.hide_context();
                 _this.removeAnyLocation();
                 _this.setViewByLocation(d);
                 _this.showLocation(d);
@@ -323,8 +322,8 @@
                     _this.setViewByLocation(d);
                     _this.showLocation(d);
                     _this.vizLocation(d, i);
+                    _this.clearMap();
                     _this.find_relations(d);
-                    _this.show_contexts(d, e);
                     timeout = 0;
                     if (_this._viewSet === void 0) {
                       return _this._viewSet = _this._m.getCenter();
@@ -339,7 +338,9 @@
             }).on("mouseout", function(d, i) {
               d3.select(this).transition().duration(1000).style("color", "rgb(72,72,72)").style("background-color", "white").style("opacity", 1);
             }).transition().duration(1).delay(1).style("opacity", 1);
-            _this._m.whenReady(function() {});
+            _this._m.whenReady(function() {
+              return _this._m.setView([42.34, -71.12], 13);
+            });
             return _this._textDomEl;
           };
         })(this),
@@ -401,10 +402,8 @@
     paratext = L.paratext(data);
     textmap = paratext.makeMap();
     texts = d3.selectAll("li");
-    console.log("paratext", paratext);
     paratext.field_category('service_name');
     paratext.makeRelations();
-    paratext.listStacker();
     paratext.vizAllLocations();
     $texts = $(texts[0]);
     return $texts.each(function() {
